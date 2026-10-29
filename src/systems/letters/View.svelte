@@ -74,7 +74,7 @@
     world = w;
     selCell = -1;
     selectedWord = null;
-    version++;
+    bump();
   }
 
   // Options that only need a re-score.
@@ -85,7 +85,7 @@
     w.config.whole = params.whole;
     w.lockSeed = params.lockSeed;
     w.evaluate();
-    version++;
+    bump();
   });
 
   // A state pasted into the URL (or from a favorite) while the world exists.
@@ -94,8 +94,13 @@
     if (!world || running || s === lastState) return;
     lastState = s;
     if (s) world.decode(s);
-    version++;
+    bump();
   });
+
+  // Bump without reading `version` in the calling effect (that would loop).
+  function bump() {
+    untrack(() => version++);
+  }
 
   function saveState() {
     if (!world) return;
@@ -107,7 +112,7 @@
     if (!running || !world) return;
     const t0 = performance.now();
     while (performance.now() - t0 < 14) world.step();
-    version++;
+    bump();
     requestAnimationFrame(loop);
   }
 
@@ -122,7 +127,7 @@
     world.fresh(params.seedText);
     selCell = -1;
     selectedWord = null;
-    version++;
+    bump();
     if (!running) saveState();
   }
 
@@ -139,7 +144,7 @@
     if (!world) return;
     world.rule[k] = v;
     world.evaluate();
-    version++;
+    bump();
     if (!running) saveState();
   }
 

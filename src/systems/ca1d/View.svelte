@@ -225,7 +225,7 @@
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (el.closest('input, textarea, select, [contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (el?.closest?.('input, textarea, select, [contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'ArrowUp') stepRule(1);
       else if (e.key === 'ArrowDown') stepRule(-1);
       else if (e.code === 'KeyR') rulesOpen = !rulesOpen;

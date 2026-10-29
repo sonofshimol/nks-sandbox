@@ -23,6 +23,8 @@ export interface CA1DParams {
   shape: 'grid' | 'ring';
   /** Ring view: radius of the empty hole in the middle, as a fraction of the disk. */
   hole: number;
+  /** Difference view: also run with the middle cell of the first row changed, and mark where the two differ. */
+  diff: boolean;
 }
 
 export const LIMITS = {
@@ -48,6 +50,7 @@ export function defaults(): CA1DParams {
     locks: [0],
     shape: 'grid',
     hole: 0.1,
+    diff: false,
   };
 }
 
@@ -137,6 +140,7 @@ export function fromQuery(q: URLSearchParams): CA1DParams {
       : [0],
     shape: q.get('shape') === 'ring' ? 'ring' : 'grid',
     hole: q.has('hole') ? Math.min(0.8, Math.max(0, Number(q.get('hole')) || 0)) : d.hole,
+    diff: q.get('diff') === '1',
   };
 }
 
@@ -165,6 +169,7 @@ export function toQuery(p: CA1DParams): Record<string, string> {
   if (!p.pyramid) q.pyr = '0';
   const locks = [...p.locks].sort((a, b) => a - b).join(',');
   if (locks !== '0') q.lock = locks || '-';
+  if (p.diff) q.diff = '1';
   if (p.shape === 'ring') {
     q.shape = 'ring';
     if (p.hole !== d.hole) q.hole = String(p.hole);

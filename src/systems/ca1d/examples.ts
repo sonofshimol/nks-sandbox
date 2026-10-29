@@ -72,4 +72,16 @@ export const examples: Example<CA1DParams>[] = [
     width: 400,
     steps: 300,
   }),
+  ex('class1', 'מחלקה 1: הכל נעשה אחיד', 'מתנאי התחלה אקראיים, כמעט כל כלל מגיע לאחת מארבע התנהגויות. במחלקה הראשונה הכל נעלם למצב אחיד.', undefined, {
+    code: '254', init: { kind: 'random', density: 0.3, seed: 4 }, boundary: 'periodic', width: 300, steps: 150, diff: true,
+  }),
+  ex('class2', 'מחלקה 2: מבנים יציבים או חזרתיים', 'נוצרים מבנים נפרדים שלא משתנים או חוזרים על עצמם. שינוי קטן בהתחלה נשאר מקומי.', undefined, {
+    code: '108', init: { kind: 'random', density: 0.5, seed: 4 }, boundary: 'periodic', width: 300, steps: 150, diff: true,
+  }),
+  ex('class3', 'מחלקה 3: אקראיות', 'התבנית נראית אקראית, ושינוי של תא אחד מתפשט לכל הכיוונים במהירות קבועה.', undefined, {
+    code: '30', init: { kind: 'random', density: 0.5, seed: 4 }, boundary: 'periodic', width: 300, steps: 150, diff: true,
+  }),
+  ex('class4', 'מחלקה 4: מבנים ממוקמים', 'מבנים שנעים ומתנגשים זה בזה. שינוי קטן מתפשט רק כשמבנה נושא אותו הלאה.', undefined, {
+    code: '110', init: { kind: 'random', density: 0.5, seed: 4 }, boundary: 'periodic', width: 400, steps: 300, diff: true,
+  }),
 ];

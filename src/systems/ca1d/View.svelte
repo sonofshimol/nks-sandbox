@@ -56,7 +56,9 @@
   let digitsError = $state('');
 
   const rule = $derived(ruleOf(params));
-  const colors = $derived(colorsFor(palettes.current, params.k));
+  /** In the difference view, index k marks cells that differ. */
+  const DIFF_COLOR = '#e8590c';
+  const colors = $derived(params.diff ? [...colorsFor(palettes.current, params.k), DIFF_COLOR] : colorsFor(palettes.current, params.k));
   const elementary = $derived(params.k === 2 && params.r === 1 && !params.totalistic);
   const description = $derived(describeRule(rule));
   const maxCode = $derived(ruleCount(params.k, params.r, params.totalistic) - 1n);
@@ -116,6 +118,20 @@
   });
 
   const truncated = $derived(sim.steps < params.steps);
+
+  /** Difference view: run again with the middle cell of the first row changed. */
+  const shown = $derived.by(() => {
+    if (!params.diff) return sim.st;
+    const { width: W, height: H, cells } = sim.st;
+    const row = Uint8Array.from(cells.subarray(0, W), (v) => (v === MASKED ? 0 : v));
+    const mid = Math.floor(W / 2);
+    row[mid] = (row[mid] + 1) % params.k;
+    const b: Boundary = params.boundary === 'infinite' && params.init.kind === 'random' ? 'periodic' : params.boundary;
+    const other = run1D({ rule, init: row, steps: H - 1, boundary: b });
+    const out = cells.slice();
+    for (let i = 0; i < out.length; i++) if (out[i] !== MASKED && other.cells[i] !== cells[i]) out[i] = params.k;
+    return { width: W, height: H, cells: out };
+  });
 
   // ---- clicking a cell ----
   function neighborsOf(x: number, t: number): { cells: number[]; pos: [number, number][] } {
@@ -375,6 +391,10 @@
 
   <section>
     <h3>צורה וגבולות</h3>
+    <label class="check">
+      <input type="checkbox" checked={params.diff} onchange={(e) => setParams({ ...params, diff: e.currentTarget.checked })} />
+      <span>תצוגת הבדל: משנים את התא האמצעי בשורה הראשונה, ומסמנים <span class="swatch" style:background={DIFF_COLOR}></span> כל תא שיוצא שונה. כך רואים כמה הכלל רגיש לתנאי ההתחלה.</span>
+    </label>
     <div class="field">
       <span class="field-label">צורה</span>
       <div class="segmented">
@@ -450,7 +470,7 @@
   {#if params.shape === 'ring'}
     <PolarCanvas
       bind:this={canvasRef}
-      cells={sim.st.cells}
+      cells={shown.cells}
       width={sim.st.width}
       height={sim.st.height}
       {colors}
@@ -462,7 +482,7 @@
   {:else}
     <GridCanvas
       bind:this={canvasRef}
-      cells={sim.st.cells}
+      cells={shown.cells}
       width={sim.st.width}
       height={sim.st.height}
       {colors}

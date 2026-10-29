@@ -15,6 +15,36 @@
   let copied = $state(false);
   const isFav = $derived(favorites.has(app.query));
 
+  // ---- video: record the main canvas while it runs ----
+  let recorder: MediaRecorder | null = null;
+  let recording = $state(false);
+  const canRecord = typeof MediaRecorder !== 'undefined' && 'captureStream' in HTMLCanvasElement.prototype;
+
+  function toggleRecording() {
+    if (recording) {
+      recorder?.stop();
+      return;
+    }
+    const canvas = document.querySelector<HTMLCanvasElement>('main canvas');
+    if (!canvas) return;
+    const type = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find((t) => MediaRecorder.isTypeSupported(t));
+    if (!type) return;
+    const chunks: Blob[] = [];
+    recorder = new MediaRecorder(canvas.captureStream(30), { mimeType: type, videoBitsPerSecond: 6_000_000 });
+    recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    recorder.onstop = () => {
+      recording = false;
+      const blob = new Blob(chunks, { type });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${title.replace(/[^p{L}p{N}]+/gu, '-')}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    };
+    recorder.start();
+    recording = true;
+  }
+
   async function share() {
     const url = location.origin + location.pathname + app.query;
     try {
@@ -38,6 +68,11 @@
   </button>
   {#if onExportPNG}
     <button class="btn purple" onclick={onExportPNG}>ייצוא PNG</button>
+  {/if}
+  {#if canRecord}
+    <button class="btn" class:rec={recording} onclick={toggleRecording} title="מקליט את מה שרואים על המסך, עד שלוחצים שוב">
+      {recording ? '■ עצירת ההקלטה' : '● הקלטת וידאו'}
+    </button>
   {/if}
 </div>
 
@@ -73,6 +108,11 @@
 </details>
 
 <style>
+  .rec {
+    background: #ffe3e3;
+    border-color: #e03131;
+    color: #c92a2a;
+  }
   .fav {
     color: #b7791f;
     border-color: #f0c36d;

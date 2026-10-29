@@ -37,6 +37,15 @@ npm run icons    # regenerate public/icon*.{svg,png}
 | Size limits | 1D: at most 9M cells (`LIMITS.maxCells`); steps are clamped and the UI says so | Keeps phones responsive |
 | Random rules | Always keep the all-0 neighborhood → 0, so patterns grow from a seed | More interesting results |
 | Book pages | Verified against the figure references in the Hebrew translation ("איור 1, עמוד 27 במקור"). The book PDF is a scan without a text layer | Don't guess page numbers; leave `page` empty if unsure |
+| Rule digits | Rules can be typed as base-k digits, most significant first; "abc|" means the palindrome abccba (odd length: middle digit shared). Palindromes are displayed with a "|" | User request |
+| Locks | Locked table entries (`lock=` in URL, default `0` so all-white stays white) are kept by "random rule" | User request |
+| Ring view | 1D option: row t is a ring of W equal sectors at radius t; middle cell at the top. Rendered by mapping each pixel back to (t, x), exact render after the view stops moving | User request |
+| Letters automaton | Port of the user's HTML (symmetric 23-symbol rule, hill climbing). Rows read right to left, so the grid is drawn mirrored. State in URL as seed + used entries (base 36). Built-in dictionary = the ~8000 words from the user's HTML, lazy-loaded; users can load their own (e.g. Hspell) into localStorage, so no AGPL list ships in the repo | Licensing |
+| 2D on GPU | Life-like, Generations, Larger than Life and WireWorld share one WebGL2 shader (RG8UI: state + age). History = ring of GPU snapshots (blitFramebuffer), ~48 MB | 1024² at 60 fps |
+| Wolfram codes 2D | Outer totalistic code: bit 2s+c = new color for own color c and neighbor sum s (5 or 9 neighbors). Checked: Game of Life = 224 | Book chapter 5 |
+| Lenia | R32F textures, needs EXT_color_buffer_float (shows a message otherwise) | Continuous values |
+| Svelte effects | Effects that call functions which read $state must wrap them in `untrack` (this caused loops twice) | Avoid effect_update_depth_exceeded |
+| Example rules | Mobile automata, TMs and register machines examples were found by a search for incompressible behavior (our own numbering, not Wolfram's TM numbering) | Book rule numbers for these were not verifiable |
 
 ## Architecture
 
@@ -46,8 +55,17 @@ src/render/        drawing helpers (cell grid → image, PNG export)
 src/systems/       one folder per kind of system + registry.ts
   types.ts         SystemModule: defaults, fromQuery/toQuery, View, examples
   ca1d/            1D CA: params, describe (Hebrew rule sentence), examples, View, RuleIcons, Gallery
-src/ui/            shared components: Shell (side panel / bottom sheet), GridCanvas (zoom/pan/click),
-                   FloatingPanel (rules window), Modal, PalettePicker, CommonTools, ReloadPrompt
+  programs/        ch. 3: mobile automata, TMs, substitution (1D/2D), sequential, tag, cyclic tag, register, continuous
+  numbers/         ch. 4: digits, multiplication, 3/2, reverse-add, sieve, recursive sequences, π, √n
+  ant/             2D Turing machines (Langton's ant / turmites), CPU
+  life/            Life-like family on WebGL2 (src/render/lifeGL.ts), RLE, patterns
+  networks/        multiway systems and causal networks (SVG)
+  lenia/           Lenia and SmoothLife (src/render/leniaGL.ts)
+  tour/            chapters 7–12: rule 30 randomness, snowflakes, reversible CA, rule 110, PCE
+  letters/         the letters automaton (src/engine/letters.ts)
+src/ui/            shared components: Shell (side panel / bottom sheet, system menu), GridCanvas
+                   (zoom/pan/click, labels, boxes), PolarCanvas (ring view), panzoom.ts, FloatingPanel
+                   (rules window), Modal, PalettePicker, CommonTools (share, favorites, PNG, video), ReloadPrompt
 src/lib/           app-wide state (palettes, favorites, theme, media query, URL)
 tests/             vitest unit tests (engine + URL)
 docs/glossary.md   Hebrew terms
@@ -68,8 +86,14 @@ Local visual comparisons go to `tests/visual/book/` and `tests/visual/out/` (git
 
 ## Status
 
-- Stage 1 (done): skeleton, PWA, 1D engine (k, r, totalistic), elementary rules with gallery and
-  pyramid, rule window, palettes (incl. green and book), share URL, favorites, PNG export.
-- Next: stage 2: Life-like in WebGL2, drawing cells, RLE.
-- Deferred from stage 1: Web Worker for 1D (not needed yet: 1000×1000 computes in a few ms),
-  animation of 1D growth, four classes and the difference view (stage 3).
+- Stage 1 (done): skeleton, PWA, 1D engine, gallery, pyramid, rules window, palettes, URL, favorites.
+- After stage 1 (done): rule digits with symmetry bar, locks, ring view, letters automaton.
+- Stage 2 (done): Life-like family on the GPU, drawing, RLE, pattern library, age colors, history.
+- Stage 3 (done): simple programs (ch. 3), numbers (ch. 4), 2D TMs, 5/9-neighbor codes from a single
+  cell, multiway systems and causal networks, Lenia and SmoothLife, difference view and four classes,
+  tour of chapters 7–12.
+- Stage 5 (partly): PWA verified (service worker + precache incl. dictionary), PNG and video export
+  (MediaRecorder, webm/mp4).
+- Not done / open: network systems (ch. 5, nodes with two connections), 3D CAs, generalized mobile
+  automata, symbolic systems (ch. 3), Hashlife, GIF export, local visual comparison against book
+  figures (needs a PDF renderer; poppler is not installed), site name (the user will choose).

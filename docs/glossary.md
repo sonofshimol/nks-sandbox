@@ -94,3 +94,17 @@
 | gallery | גלריה |
 | favorites | מועדפים |
 | share link | קישור לשיתוף |
+
+## נוספו בהמשך ★
+
+| English | עברית | הערות |
+|---|---|---|
+| Langton's ant / turmite | הנמלה של לנגטון / נמלה | מכונת טיורינג דו־ממדית |
+| two-dimensional Turing machine | מכונת טיורינג דו־ממדית | |
+| difference pattern | תצוגת הבדל | |
+| second-order cellular automaton | אוטומט מסדר שני | |
+| growth function / kernel | פונקציית גדילה / גרעין | Lenia |
+| spellular automaton | אוטומט האותיות | |
+| update rules | כללי העדכון | כפתור בכל מערכת |
+| history (back in time) | צעד אחורה | |
+| generations (states) | מצבי גסיסה | Generations |

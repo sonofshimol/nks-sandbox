@@ -73,6 +73,10 @@ export function parseRule(input: string): LifeRule | null {
     return rule;
   }
 
+  // Wolfram codes for outer totalistic rules: "5:462" (5 neighbors) or "9:224" (9 neighbors)
+  const w = /^(5|9):(\d+)$/.exec(s);
+  if (w) return fromWolframCode(Number(w[2]), w[1] === '5');
+
   // B3/S23, B2/S/C3, b3s23, B3/S23V
   let m = /^B([0-8]*)\/?S([0-8]*)(?:\/?[CG](\d+))?(V)?$/i.exec(s);
   if (m) {
@@ -184,3 +188,29 @@ export const NAMED_RULES: { name: string; rule: string; text: string }[] = [
   { name: 'Bosco (Larger than Life)', rule: 'R5,C0,M1,S34..58,B34..45,NM', text: 'טווח 5: סופרים 121 תאים. נוצרים "חיידקים" עגולים שזזים.' },
   { name: 'Majority (Larger than Life)', rule: 'R4,C0,M1,S41..81,B41..81,NM', text: 'כל תא מקבל את צבע הרוב בריבוע של 81 תאים סביבו. מתקבלים כתמים חלקים.' },
 ];
+
+// ---- Wolfram codes for 2-color outer totalistic rules (book, chapter 5) ----
+// Bit 2s + c of the code gives the new color of a cell whose own color is c and
+// whose neighbors (4 with five-cell neighborhoods, 8 with nine-cell ones) sum to s.
+
+export function fromWolframCode(code: number, five: boolean): LifeRule {
+  const rule = emptyRule('life', 2, 1, false, five);
+  const n = five ? 4 : 8;
+  for (let sum = 0; sum <= n; sum++) {
+    rule.birth[sum] = Math.floor(code / 2 ** (2 * sum)) % 2 === 1;
+    rule.survive[sum] = Math.floor(code / 2 ** (2 * sum + 1)) % 2 === 1;
+  }
+  return rule;
+}
+
+/** The Wolfram code of a 2-state, range-1 rule, or null for other rules. */
+export function wolframCode(rule: LifeRule): number | null {
+  if (rule.family !== 'life' || rule.range !== 1 || rule.center) return null;
+  const n = rule.vonNeumann ? 4 : 8;
+  let code = 0;
+  for (let sum = 0; sum <= n; sum++) {
+    if (rule.birth[sum]) code += 2 ** (2 * sum);
+    if (rule.survive[sum]) code += 2 ** (2 * sum + 1);
+  }
+  return code;
+}

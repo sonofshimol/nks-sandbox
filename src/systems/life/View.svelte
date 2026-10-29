@@ -2,7 +2,7 @@
   // 2D Life-like automata on the GPU: Game of Life and the B/S family,
   // Generations (Brian's Brain), Larger than Life and WireWorld.
   import { onMount, untrack } from 'svelte';
-  import { formatRule, maxCount, NAMED_RULES, parseRule, type LifeRule } from '../../engine/life';
+  import { formatRule, fromWolframCode, maxCount, NAMED_RULES, parseRule, wolframCode, type LifeRule } from '../../engine/life';
   import { colorsFor } from '../../engine/palette';
   import { PATTERNS } from '../../engine/patterns';
   import { mulberry32, randomSeed } from '../../engine/random';
@@ -48,6 +48,7 @@
   const rule = $derived<LifeRule>(parseRule(params.rule) ?? parseRule('B3/S23')!);
   const colors = $derived(colorsFor(palettes.current, Math.max(2, rule.states)));
   const description = $derived(describeLifeRule(rule));
+  const wcode = $derived(wolframCode(rule));
   const named = $derived(NAMED_RULES.find((r) => formatRule(parseRule(r.rule)!) === formatRule(rule)));
 
   $effect(() => {
@@ -163,6 +164,10 @@
       return { cells };
     }
     if (init.kind === 'empty') return { cells };
+    if (init.kind === 'single') {
+      cells[Math.floor(N / 2) * N + Math.floor(N / 2)] = 1;
+      return { cells };
+    }
     let rle = '';
     let r: string | undefined;
     if (init.kind === 'pattern') {
@@ -676,6 +681,7 @@
     <div class="row">
       <button class="btn small orange" onclick={() => randomFill()}>מילוי אקראי</button>
       <button class="btn small" onclick={() => setParams({ ...params, init: { kind: 'empty' } })}>ניקוי</button>
+      <button class="btn small" onclick={() => setParams({ ...params, init: { kind: 'single' } })}>תא יחיד</button>
       <button class="btn small" onclick={rebuild}>חזרה להתחלה</button>
     </div>
     <span class="field-label">תבניות</span>
@@ -762,12 +768,12 @@
           </div>
         {/each}
       </div>
-    {:else if rule.range === 1 && !rule.vonNeumann && !rule.center}
+    {:else if rule.range === 1 && !rule.center}
       <table class="bs">
         <thead>
           <tr>
             <th>שכנים חיים</th>
-            {#each Array.from({ length: 9 }, (_, i) => i) as i (i)}<th>{i}</th>{/each}
+            {#each rule.birth as _, i (i)}<th>{i}</th>{/each}
           </tr>
         </thead>
         <tbody>
@@ -798,6 +804,17 @@
       </div>
     {/if}
 
+    {#if wcode !== null}
+      <div class="row">
+        <label for="wcode">קוד וולפרם ({rule.vonNeumann ? '5' : '9'} שכנים, כולל התא):</label>
+        <input id="wcode" class="ltr" type="number" min="0" style="width:110px" value={wcode}
+          onchange={(e) => setRule(fromWolframCode(Number(e.currentTarget.value) || 0, rule.vonNeumann))} />
+        <div class="segmented">
+          <button aria-pressed={rule.vonNeumann} onclick={() => setRule(fromWolframCode(Math.min(wcode ?? 0, 1023), true))}>5</button>
+          <button aria-pressed={!rule.vonNeumann} onclick={() => setRule(fromWolframCode(wcode ?? 0, false))}>9</button>
+        </div>
+      </div>
+    {/if}
     {#if rule.family !== 'wireworld'}
       <div class="row">
         <label class="field">טווח (רדיוס)

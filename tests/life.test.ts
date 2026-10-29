@@ -114,3 +114,12 @@ describe('Game of Life oscillators and spaceships', () => {
     expect(Array.from(g)).toEqual([3, 2, 1, 3, 3]);
   });
 });
+
+describe('Wolfram codes for outer totalistic rules', () => {
+  it('the Game of Life is code 224 with nine neighbors', async () => {
+    const { wolframCode, fromWolframCode } = await import('../src/engine/life');
+    expect(wolframCode(parseRule('B3/S23')!)).toBe(224);
+    expect(formatRule(fromWolframCode(224, false))).toBe('B3/S23');
+    for (const c of [0, 462, 942, 1023]) expect(wolframCode(parseRule(`5:${c}`)!)).toBe(c);
+  });
+});

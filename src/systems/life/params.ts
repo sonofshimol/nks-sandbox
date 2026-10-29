@@ -6,7 +6,8 @@ export type LifeInit =
   | { kind: 'random'; density: number; seed: number }
   | { kind: 'pattern'; id: string }
   | { kind: 'rle'; rle: string }
-  | { kind: 'empty' };
+  | { kind: 'empty' }
+  | { kind: 'single' };
 
 export interface LifeParams {
   rule: string;
@@ -44,6 +45,7 @@ export function fromQuery(q: URLSearchParams): LifeParams {
   if (kind === 'pattern' && q.get('pat')) init = { kind: 'pattern', id: q.get('pat')! };
   else if (kind === 'rle' && q.get('rle')) init = { kind: 'rle', rle: q.get('rle')! };
   else if (kind === 'empty') init = { kind: 'empty' };
+  else if (kind === 'single') init = { kind: 'single' };
   else if (kind === 'random' || q.has('d')) {
     const dens = Number(q.get('d'));
     init = {
@@ -79,7 +81,7 @@ export function toQuery(p: LifeParams): Record<string, string> {
   } else if (p.init.kind === 'rle') {
     q.init = 'rle';
     q.rle = p.init.rle;
-  } else q.init = 'empty';
+  } else q.init = p.init.kind;
   if (p.speed !== d.speed) q.speed = String(p.speed);
   if (p.age) q.age = '1';
   return q;

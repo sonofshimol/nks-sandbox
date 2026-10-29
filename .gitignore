@@ -11,3 +11,5 @@ Wolfram*
 # Local-only visual comparisons against book figures
 tests/visual/book/
 tests/visual/out/
+desktop.ini
+Thumbs.db

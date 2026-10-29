@@ -123,3 +123,16 @@ describe('Wolfram codes for outer totalistic rules', () => {
     for (const c of [0, 462, 942, 1023]) expect(wolframCode(parseRule(`5:${c}`)!)).toBe(c);
   });
 });
+
+describe('Lenia', () => {
+  it('kernels are normalized and growth peaks at mu', async () => {
+    const { leniaKernel, smoothKernels, growth } = await import('../src/engine/lenia');
+    const sum = (a: Float32Array) => a.reduce((s, v) => s + v, 0);
+    expect(sum(leniaKernel(13))).toBeCloseTo(1, 5);
+    const { disk, ring } = smoothKernels(12);
+    expect(sum(disk)).toBeCloseTo(1, 5);
+    expect(sum(ring)).toBeCloseTo(1, 5);
+    expect(growth(0.15, 0.15, 0.015)).toBeCloseTo(1);
+    expect(growth(0.5, 0.15, 0.015)).toBeCloseTo(-1);
+  });
+});

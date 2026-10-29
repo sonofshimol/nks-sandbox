@@ -486,6 +486,13 @@
     const d = density ?? (params.init.kind === 'random' ? params.init.density : 0.3);
     setParams({ ...params, init: { kind: 'random', density: d, seed: randomSeed() } });
   }
+  /** Random outer totalistic code (empty stays empty), grown from a single cell. */
+  function randomCode(five: boolean) {
+    const bits = five ? 10 : 18;
+    const code = Math.floor(Math.random() * 2 ** bits) & ~1;
+    setParams({ ...params, rule: formatRule(fromWolframCode(code, five)), init: { kind: 'single' }, size: Math.max(params.size, 256) });
+  }
+
   function loadPattern(id: string) {
     const p = PATTERNS.find((p) => p.id === id)!;
     setParams({ ...params, init: { kind: 'pattern', id }, rule: p.rule });
@@ -684,6 +691,11 @@
       <button class="btn small" onclick={() => setParams({ ...params, init: { kind: 'single' } })}>תא יחיד</button>
       <button class="btn small" onclick={rebuild}>חזרה להתחלה</button>
     </div>
+    <div class="row">
+      <button class="btn small purple" onclick={() => randomCode(true)}>קוד אקראי, 5 שכנים</button>
+      <button class="btn small purple" onclick={() => randomCode(false)}>קוד אקראי, 9 שכנים</button>
+    </div>
+    <p class="hint">כמו בפרק 5: כללים טוטליסטיים חיצוניים לפי קוד וולפרם, מתא שחור יחיד. משחק החיים הוא קוד 224 עם 9 שכנים.</p>
     <span class="field-label">תבניות</span>
     <ul class="patterns">
       {#each PATTERNS as p (p.id)}

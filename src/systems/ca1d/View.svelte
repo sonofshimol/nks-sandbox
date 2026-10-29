@@ -7,7 +7,10 @@
     maskPyramid,
     MASKED,
     mirrorRule,
+    parseRuleDigits,
+    randomizeRule,
     ruleCount,
+    ruleDigits,
     ruleToCode,
     run1D,
     tableIndexFor,
@@ -25,6 +28,7 @@
   import FloatingPanel from '../../ui/FloatingPanel.svelte';
   import GridCanvas, { type Highlight } from '../../ui/GridCanvas.svelte';
   import Modal from '../../ui/Modal.svelte';
+  import PolarCanvas from '../../ui/PolarCanvas.svelte';
   import PalettePicker from '../../ui/PalettePicker.svelte';
   import Shell from '../../ui/Shell.svelte';
   import type { SystemViewProps } from '../types';
@@ -35,7 +39,6 @@
     defaultCodeFor,
     familyName,
     LIMITS,
-    randomCode,
     ruleName,
     ruleOf,
     safeBigInt,
@@ -48,13 +51,46 @@
   let rulesOpen = $state(false);
   let galleryOpen = $state(false);
   let selected = $state<{ x: number; t: number } | null>(null);
-  let canvasRef = $state<GridCanvas>();
+  let canvasRef = $state<GridCanvas | PolarCanvas>();
+  let digitsText = $state('');
+  let digitsError = $state('');
 
   const rule = $derived(ruleOf(params));
   const colors = $derived(colorsFor(palettes.current, params.k));
   const elementary = $derived(params.k === 2 && params.r === 1 && !params.totalistic);
   const description = $derived(describeRule(rule));
   const maxCode = $derived(ruleCount(params.k, params.r, params.totalistic) - 1n);
+  const locks = $derived(new Set(params.locks));
+  const digits = $derived(ruleDigits(rule));
+  $effect(() => {
+    digitsText = digits;
+    digitsError = '';
+  });
+
+  function applyDigits() {
+    const t = parseRuleDigits(digitsText, params.k, rule.table.length);
+    if (typeof t === 'string') {
+      digitsError = t;
+      return;
+    }
+    digitsError = '';
+    setTable(t);
+  }
+
+  /** Random rule that keeps the locked entries. */
+  function randomize() {
+    setParams({ ...params, code: ruleToCode(randomizeRule(rule, locks)).toString() });
+  }
+
+  function toggleLock(i: number) {
+    const next = new Set(params.locks);
+    if (next.has(i)) next.delete(i);
+    else next.add(i);
+    setParams({ ...params, locks: [...next].sort((a, b) => a - b) });
+  }
+  function setAllLocks(on: boolean) {
+    setParams({ ...params, locks: on ? Array.from(rule.table, (_, i) => i) : [] });
+  }
 
   // ---- simulation ----
   const sim = $derived.by(() => {
@@ -149,7 +185,7 @@
   function setFamily(k: number, r: number, totalistic: boolean) {
     if (!familyAllowed(k, r, totalistic)) totalistic = true;
     const init = params.init.kind === 'single' ? { kind: 'single' as const, color: Math.min(params.init.color, k - 1) } : params.init;
-    setParams({ ...params, k, r, totalistic, code: defaultCodeFor(k, r, totalistic), init });
+    setParams({ ...params, k, r, totalistic, code: defaultCodeFor(k, r, totalistic), init, locks: [0] });
   }
   function familyAllowed(k: number, r: number, totalistic: boolean) {
     return totalistic || k ** (2 * r + 1) <= 1024;
@@ -194,7 +230,7 @@
       else if (e.key === 'ArrowDown') stepRule(-1);
       else if (e.code === 'KeyR') rulesOpen = !rulesOpen;
       else if (e.code === 'KeyG') galleryOpen = !galleryOpen;
-      else if (e.code === 'KeyN') setParams({ ...params, code: randomCode(params.k, params.r, params.totalistic) });
+      else if (e.code === 'KeyN') randomize();
       else if (e.code === 'KeyF') canvasRef?.fit();
       else if (e.key === 'Escape') {
         rulesOpen = false;
@@ -213,10 +249,6 @@
     selected = null;
   });
 
-  const baseDigits = $derived.by(() => {
-    if (rule.table.length > 32) return '';
-    return Array.from(rule.table).reverse().join('');
-  });
 </script>
 
 {#snippet ruleStepper()}
@@ -256,7 +288,7 @@
     </button>
     <div class="row">
       {#if elementary}<button class="btn blue" onclick={() => (galleryOpen = true)}>גלריית 256 הכללים</button>{/if}
-      <button class="btn orange" onclick={() => setParams({ ...params, code: randomCode(params.k, params.r, params.totalistic) })}>כלל אקראי</button>
+      <button class="btn orange" onclick={() => randomize()}>כלל אקראי</button>
     </div>
   </section>
 
@@ -342,7 +374,23 @@
   </section>
 
   <section>
-    <h3>גודל וגבולות</h3>
+    <h3>צורה וגבולות</h3>
+    <div class="field">
+      <span class="field-label">צורה</span>
+      <div class="segmented">
+        <button aria-pressed={params.shape === 'grid'} onclick={() => setParams({ ...params, shape: 'grid' })}>שורות</button>
+        <button
+          aria-pressed={params.shape === 'ring'}
+          onclick={() => setParams({ ...params, shape: 'ring', boundary: params.boundary === 'infinite' ? 'periodic' : params.boundary })}
+        >טבעות</button>
+      </div>
+      {#if params.shape === 'ring'}
+        <span class="hint">כל צעד הוא טבעת סביב הקודם, והטבעת מחולקת ל־{params.boundary === 'infinite' ? sim.st.width : params.width} חלקים שווים. בגבולות מחזוריים התא הראשון והאחרון בטבעת הם שכנים.</span>
+        <label for="hole">חור במרכז: {Math.round(params.hole * 100)}%</label>
+        <input id="hole" type="range" min="0" max="0.7" step="0.01" value={params.hole}
+          oninput={(e) => setParams({ ...params, hole: Number(e.currentTarget.value) })} />
+      {/if}
+    </div>
     <div class="field">
       <span class="field-label">גבולות</span>
       <div class="segmented">
@@ -399,16 +447,30 @@
 {/snippet}
 
 {#snippet main()}
-  <GridCanvas
-    bind:this={canvasRef}
-    cells={sim.st.cells}
-    width={sim.st.width}
-    height={sim.st.height}
-    {colors}
-    grid={palettes.current.grid}
-    {highlight}
-    {onCellClick}
-  />
+  {#if params.shape === 'ring'}
+    <PolarCanvas
+      bind:this={canvasRef}
+      cells={sim.st.cells}
+      width={sim.st.width}
+      height={sim.st.height}
+      {colors}
+      grid={palettes.current.grid}
+      hole={params.hole}
+      {highlight}
+      {onCellClick}
+    />
+  {:else}
+    <GridCanvas
+      bind:this={canvasRef}
+      cells={sim.st.cells}
+      width={sim.st.width}
+      height={sim.st.height}
+      {colors}
+      grid={palettes.current.grid}
+      {highlight}
+      {onCellClick}
+    />
+  {/if}
 {/snippet}
 
 {#snippet overlay()}
@@ -439,18 +501,38 @@
       <span class="rule-name">{ruleName(params)}</span>
       <span class="badge">{familyName(params)}</span>
     </div>
-    <RuleIcons {rule} {colors} grid={palettes.current.grid} large onChange={setTable} active={selectedInfo?.index ?? null} />
-    {#if baseDigits}
-      <p class="digits">
-        בבסיס {params.k}: <span class="ltr mono">{baseDigits}</span>
-        <span class="muted">(התוצאות מימין לשמאל, כמו האייקונים)</span>
-      </p>
-    {/if}
+    <RuleIcons {rule} {colors} grid={palettes.current.grid} large onChange={setTable} active={selectedInfo?.index ?? null} {locks} onToggleLock={toggleLock} />
+    <div class="row lock-tools">
+      <span class="hint">🔒 תאים נעולים לא משתנים כשמגרילים כלל אקראי.</span>
+      <button class="btn small" onclick={() => setAllLocks(true)}>נעילת הכל</button>
+      <button class="btn small" onclick={() => setAllLocks(false)}>שחרור הכל</button>
+    </div>
+    <div class="digits">
+      <label for="digits">כתיבה בבסיס {params.k}</label>
+      <div class="row">
+        <input
+          id="digits"
+          class="ltr mono-input"
+          type="text"
+          inputmode="numeric"
+          spellcheck="false"
+          bind:value={digitsText}
+          onkeydown={(e) => e.key === 'Enter' && applyDigits()}
+          onblur={applyDigits}
+        />
+        <button class="btn small" onclick={applyDigits}>החלה</button>
+      </div>
+      <span class="hint">
+        ספרה לכל אייקון, באותו סדר משמאל לימין. קו | מסמן ציר סימטריה: אפשר לכתוב רק את החצי
+        הראשון ואחריו | (למשל 33312| הופך ל־3331221333).
+      </span>
+      {#if digitsError}<span class="error">{digitsError}</span>{/if}
+    </div>
     <p class="desc"><ColorText text={description} {colors} /></p>
     <p class="hint">לחיצה על התא התחתון של אייקון משנה את התוצאה, והמספר מתעדכן בהתאם.</p>
     <div class="row">
       {@render ruleStepper()}
-      <button class="btn small orange" onclick={() => setParams({ ...params, code: randomCode(params.k, params.r, params.totalistic) })}>אקראי</button>
+      <button class="btn small orange" onclick={() => randomize()}>אקראי</button>
       {#if !params.totalistic}
         <button class="btn small" onclick={() => setTable(mirrorRule(rule).table)} title="החלפת שמאל וימין">תמונת מראה</button>
       {/if}
@@ -588,15 +670,28 @@
     line-height: 1.6;
   }
   .digits {
-    margin: 0;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     font-size: 14px;
   }
-  .mono {
+  .digits label {
+    font-weight: 600;
+  }
+  .mono-input {
+    flex: 1;
+    min-width: 0;
     font-family: var(--font-mono);
     font-weight: 700;
-    letter-spacing: 0.15em;
-    display: inline-block;
+    letter-spacing: 0.12em;
+  }
+  .error {
+    color: var(--accent-3);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .lock-tools {
+    justify-content: space-between;
   }
 
   .cell-info {

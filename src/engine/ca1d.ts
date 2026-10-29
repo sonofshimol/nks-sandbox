@@ -220,3 +220,55 @@ export function column(st: Spacetime, x: number): Uint8Array {
   for (let t = 0; t < st.height; t++) out[t] = st.cells[t * st.width + x];
   return out;
 }
+
+// ---- Writing a rule as digits in base k ----
+// Digits are written most significant first, as in the book: for elementary
+// rules the first digit is the result for 111, the last for 000. A "|" marks a
+// symmetry axis: "abc|" is shorthand for the palindrome "abccba" (or "abcba"
+// when the table has odd length), and "abc|cba" is just the full string.
+
+/** Digits of the rule table, most significant first; palindromes get a "|" in the middle. */
+export function ruleDigits(rule: Rule1D): string {
+  const d = Array.from(rule.table).reverse().join('');
+  const n = d.length;
+  if (n < 2 || d !== [...d].reverse().join('')) return d;
+  const half = Math.ceil(n / 2);
+  return d.slice(0, half) + '|' + d.slice(half);
+}
+
+/** Parse digits (optionally with "|") into a table, or return an error message in Hebrew. */
+export function parseRuleDigits(input: string, k: number, len: number): Uint8Array | string {
+  const s = input.replace(/\s+/g, '');
+  let full: string;
+  const parts = s.split('|');
+  if (parts.length > 2) return 'אפשר להשתמש בקו | אחד בלבד';
+  if (parts.length === 2) {
+    const [left, right] = parts;
+    if (right === '') {
+      if (2 * left.length === len) full = left + [...left].reverse().join('');
+      else if (2 * left.length - 1 === len) full = left + [...left.slice(0, -1)].reverse().join('');
+      else return `לכתיבה סימטרית צריך ${Math.ceil(len / 2)} ספרות לפני הקו`;
+    } else {
+      full = left + right;
+    }
+  } else {
+    full = s;
+  }
+  if (!/^\d*$/.test(full)) return 'רק ספרות, ואולי קו |';
+  if (full.length > len) return `יותר מדי ספרות: לכלל הזה יש ${len}`;
+  full = full.padStart(len, '0');
+  const table = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    const v = Number(full[len - 1 - i]);
+    if (v >= k) return `בבסיס ${k} מותרות רק הספרות 0 עד ${k - 1}`;
+    table[i] = v;
+  }
+  return table;
+}
+
+/** Randomize every table entry except the locked ones. */
+export function randomizeRule(rule: Rule1D, locked: ReadonlySet<number>, rnd: () => number = Math.random): Rule1D {
+  const table = rule.table.slice();
+  for (let i = 0; i < table.length; i++) if (!locked.has(i)) table[i] = Math.floor(rnd() * rule.k);
+  return { ...rule, table };
+}

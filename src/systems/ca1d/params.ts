@@ -17,6 +17,12 @@ export interface CA1DParams {
   boundary: Boundary;
   /** Hide cells outside the light cone of a finite seed. */
   pyramid: boolean;
+  /** Table entries that random changes leave alone. */
+  locks: number[];
+  /** 'grid': rows of cells. 'ring': each step is a ring around the previous one. */
+  shape: 'grid' | 'ring';
+  /** Ring view: radius of the empty hole in the middle, as a fraction of the disk. */
+  hole: number;
 }
 
 export const LIMITS = {
@@ -39,6 +45,9 @@ export function defaults(): CA1DParams {
     width: 401,
     boundary: 'infinite',
     pyramid: true,
+    locks: [0],
+    shape: 'grid',
+    hole: 0.1,
   };
 }
 
@@ -119,7 +128,15 @@ export function fromQuery(q: URLSearchParams): CA1DParams {
     steps: int('t', d.steps, 1, LIMITS.maxSteps),
     width: int('w', d.width, 3, LIMITS.maxWidth),
     boundary: init.kind === 'random' && boundary === 'infinite' ? 'periodic' : boundary,
-    pyramid: q.get('view') !== 'full',
+    pyramid: q.get('pyr') !== '0',
+    locks: q.has('lock')
+      ? (q.get('lock') ?? '')
+          .split(',')
+          .filter((x) => /^d+$/.test(x))
+          .map(Number)
+      : [0],
+    shape: q.get('shape') === 'ring' ? 'ring' : 'grid',
+    hole: q.has('hole') ? Math.min(0.8, Math.max(0, Number(q.get('hole')) || 0)) : d.hole,
   };
 }
 
@@ -145,7 +162,13 @@ export function toQuery(p: CA1DParams): Record<string, string> {
     q.b = BOUNDARY_KEYS[p.boundary];
     q.w = String(p.width);
   }
-  if (!p.pyramid) q.view = 'full';
+  if (!p.pyramid) q.pyr = '0';
+  const locks = [...p.locks].sort((a, b) => a - b).join(',');
+  if (locks !== '0') q.lock = locks || '-';
+  if (p.shape === 'ring') {
+    q.shape = 'ring';
+    if (p.hole !== d.hole) q.hole = String(p.hole);
+  }
   return q;
 }
 

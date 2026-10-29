@@ -14,9 +14,12 @@
     onChange?: (table: Uint8Array) => void;
     /** Table index to emphasize (e.g. the one that produced a clicked cell). */
     active?: number | null;
+    /** Locked entries (kept by random changes); shown with a lock when onToggleLock is given. */
+    locks?: ReadonlySet<number>;
+    onToggleLock?: (i: number) => void;
   }
 
-  let { rule, colors, grid, large = false, editable = true, onChange, active = null }: Props = $props();
+  let { rule, colors, grid, large = false, editable = true, onChange, active = null, locks, onToggleLock }: Props = $props();
 
   const n = $derived(neighborhoodSize(rule.r));
   const count = $derived(rule.table.length);
@@ -43,7 +46,7 @@
 
 <div class="icons ltr" class:large style:--cell="{cell}px" style:--line={line}>
   {#each order as i (i)}
-    <div class="icon" class:active={active === i}>
+    <div class="icon" class:active={active === i} class:locked={locks?.has(i)}>
       {#if rule.totalistic}
         <div class="sum" title="סכום הצבעים בשכנות">{i}</div>
       {:else}
@@ -63,6 +66,24 @@
       >
         {#if large && rule.k > 2}{rule.table[i]}{/if}
       </button>
+      {#if onToggleLock}
+        <button
+          class="lock"
+          aria-pressed={locks?.has(i) ?? false}
+          onclick={() => onToggleLock(i)}
+          title={locks?.has(i) ? 'נעול: לא משתנה בהגרלה' : 'פתוח: משתנה בהגרלה'}
+          aria-label={locks?.has(i) ? 'שחרור הנעילה' : 'נעילה'}
+        >
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+            {#if locks?.has(i)}
+              <path d="M4.5 7V5a3.5 3.5 0 0 1 7 0v2" fill="none" stroke="currentColor" stroke-width="1.8" />
+            {:else}
+              <path d="M4.5 7V5a3.5 3.5 0 0 1 6.6-1.6" fill="none" stroke="currentColor" stroke-width="1.8" />
+            {/if}
+            <rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="currentColor" />
+          </svg>
+        </button>
+      {/if}
     </div>
   {/each}
 </div>
@@ -80,6 +101,24 @@
     align-items: center;
     padding: 3px;
     border-radius: 6px;
+  }
+  .icon.locked {
+    background: var(--accent-4-soft);
+  }
+  .lock {
+    margin-top: 3px;
+    border: 0;
+    background: transparent;
+    padding: 2px;
+    color: var(--border);
+    line-height: 0;
+    border-radius: 4px;
+  }
+  .lock:hover {
+    color: var(--text-muted);
+  }
+  .lock[aria-pressed='true'] {
+    color: var(--accent-4);
   }
   .icon.active {
     background: var(--accent-3-soft);

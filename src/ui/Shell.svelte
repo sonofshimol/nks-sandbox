@@ -2,7 +2,13 @@
   // Page layout: canvas plus controls. Desktop: side panel. Phone: full-screen
   // canvas with a bottom sheet (a quick bar when collapsed, all controls when open).
   import type { Snippet } from 'svelte';
+  import { app } from '../lib/app.svelte';
   import { media } from '../lib/media.svelte';
+
+  function goTo(id: string) {
+    const first = app.systems[0]?.id;
+    location.href = id === first ? './' : `?sys=${id}`;
+  }
 
   interface Props {
     title: string;
@@ -23,6 +29,11 @@
       <img src="/icon.svg" alt="" width="26" height="26" />
       {#if !media.mobile}<span>ארגז חול לאוטומטים תאיים</span>{/if}
     </a>
+    <select class="systems" value={app.systemId} onchange={(e) => goTo(e.currentTarget.value)} aria-label="בחירת מערכת">
+      {#each app.systems as s (s.id)}
+        <option value={s.id}>{s.title}{s.chapter ? ` (${s.chapter})` : ''}</option>
+      {/each}
+    </select>
     <div class="title">
       <strong>{title}</strong>
       {#if subtitle}<span class="muted">{subtitle}</span>{/if}
@@ -79,6 +90,16 @@
     font-weight: 700;
     text-decoration: none;
     white-space: nowrap;
+  }
+  .systems {
+    max-width: 240px;
+    font-weight: 600;
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    background: var(--accent-soft);
+  }
+  .mobile .systems {
+    max-width: 46vw;
   }
   .title {
     display: flex;
